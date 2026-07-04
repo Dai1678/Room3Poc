@@ -67,6 +67,11 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.androidx.sqlite.bundled)
         }
+        // js/wasmJs共有の中間ソースセット。Web用ドライバーはここに置く
+        webMain.dependencies {
+            implementation(libs.androidx.sqlite.web)
+            implementation(projects.sqliteWasmWorker)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
