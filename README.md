@@ -1,46 +1,82 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Web, Desktop (JVM).
+# Room3Poc
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+Room 3.0のKotlin Multiplatform対応を検証するPoCプロジェクト。
+`commonMain`に1回だけ書いた同一のDAOが Android / Desktop(JVM) / Web(WasmJs) で動作し、Webではブラウザをリロードしてもデータが残る（OPFS永続化）ことを確認する。
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+アプリは画面1つ・Entity1つの最小構成のCatリスト。名前を入力して追加すると、`Flow`を購読している一覧に即座に反映され、アプリを再起動（Webはリロード）してもデータが残る。
 
-### Running the apps
+## 検証状況
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+| ターゲット | 状態 | 永続化先 |
+|---|---|---|
+| Desktop (JVM) | ✅ 動作確認済み | `$TMPDIR/cats.db`（`BundledSQLiteDriver`） |
+| Android | ✅ 動作確認済み（API 36エミュレータ） | `getDatabasePath("cats.db")`（`BundledSQLiteDriver`） |
+| Web (WasmJs) | ✅ 動作確認済み・リロード後もデータ残存 | OPFS上の`cats.db`（`WebWorkerSQLiteDriver`） |
+| Web (JS) | ビルド確認のみ（WasmJs不調時のフォールバック） | 同上 |
+| iOS | ⚠️ 未実装（ターゲットは生成済み、`actual`未実装） | — |
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
-- Web app:
-  - Wasm target (faster, modern browsers): `./gradlew :webApp:wasmJsBrowserDevelopmentRun`
-  - JS target (slower, supports older browsers): `./gradlew :webApp:jsBrowserDevelopmentRun`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+> ⚠️ iOS用の`actual`が未実装のため、`./gradlew build`のような**全ターゲット一括ビルドは失敗する**。ターゲット別のタスクを使うこと。
 
-### Running tests
+## アーキテクチャ
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+```
+shared/commonMain
+  ├── @Entity Cat / @Dao CatDao (suspend + Flow) / @Database CatDatabase
+  └── expect fun databaseBuilder(): RoomDatabase.Builder<CatDatabase>
+        │
+        ├── jvmMain:     actual → BundledSQLiteDriver → ローカルファイル
+        ├── androidMain: actual → BundledSQLiteDriver → アプリ内DBファイル
+        └── webMain:     actual → WebWorkerSQLiteDriver（js/wasmJs共通）
+                                        │ postMessage (open/prepare/step/close)
+                                        ▼
+                              sqliteWasmWorker/worker/worker.js
+                                        │ @sqlite.org/sqlite-wasm
+                                        ▼
+                              SQLite WASM → OPFS（ブラウザ内永続化）
+```
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :shared:jvmTest`
-- Web tests:
-  - Wasm target: `./gradlew :shared:wasmJsTest`
-  - JS target: `./gradlew :shared:jsTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+DAO・Entity・クエリは`commonMain`に1回しか書かない。プラットフォームごとに違うのは`databaseBuilder()`の`actual`（ドライバーの差し替え）だけ。
 
----
+## モジュール構成
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+- `shared/` — Entity・DAO・DB定義（commonMain）と各プラットフォームの`actual`、共通Compose UI
+- `androidApp/` / `desktopApp/` / `webApp/` — 各プラットフォームのエントリポイント
+- `iosApp/` — iOSエントリポイント（PoCでは未使用）
+- `sqliteWasmWorker/` — Web用Workerモジュール。`WebWorkerSQLiteDriver`のメッセージングプロトコル（open/prepare/step/close）を実装した`worker.js`と、`@sqlite.org/sqlite-wasm`へのnpm依存を持つ。
+  - [danysantiago/room-web-demo](https://github.com/danysantiago/room-web-demo/)（Apache-2.0）からの移植
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+## 実行方法
+
+```bash
+# Desktop（最速で動作確認できる）
+./gradlew :desktopApp:run
+
+# Android（ビルドしてadbでインストール、またはIDEのRun Configurationから）
+./gradlew :androidApp:assembleDebug
+
+# Web (WasmJs) — devServerが http://localhost:8080 で起動する
+./gradlew :webApp:wasmJsBrowserDevelopmentRun
+
+# Web (JS) — フォールバック用
+./gradlew :webApp:jsBrowserDevelopmentRun
+```
+
+### Webターゲットの注意点
+
+- **COOP/COEPヘッダ**: OPFSの高速アクセス（SharedArrayBuffer）に必要なcross-origin isolationを、`webApp/webpack.config.d/webpack.config.js`でdevServerに設定済み。DevTools Consoleで`crossOriginIsolated`が`true`を返せば有効
+- **npm依存を変更した場合**: 初回ビルドがlockfile不一致で失敗したら `./gradlew kotlinWasmUpgradeYarnLock kotlinUpgradeYarnLock` を実行してから再ビルドする
+- worker.jsのメッセージログ（`handleMessage: {...}`）がDevTools Consoleに流れるので、Room→Worker→SQLite WASMのやり取りを観察できる
+
+## テスト
+
+```bash
+# DAOの挿入・Flow購読・再オープン後のデータ残存を検証するJVMテスト
+./gradlew :shared:jvmTest --tests "dev.dai.room3poc.db.CatDaoJvmTest"
+```
+
+## Room 3.0まわりのメモ
+
+- Roomのimportはすべて`androidx.room3.*`（2.xの`androidx.room.*`と混ぜない）
+- DAOのブロッキング関数は、非Androidプラットフォームを対象とするソースセットではコンパイルエラーになる（suspendまたはFlow等が必須）
+- `@ConstructedBy`の`actual`はKSPが各ターゲット向けに自動生成する（`shared/build/generated/ksp/<target>/`）
+- スキーマは`room3 { schemaDirectory }`の設定により`shared/schemas/`にexportされる
