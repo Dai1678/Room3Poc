@@ -24,15 +24,6 @@ interface CatDao {
 
     @Query("SELECT * FROM Cat")
     fun getCatsFlow(): Flow<List<Cat>>
-
-    // 【検証用】非suspendのブロッキングDAO関数。
-    // commonMain（非Androidプラットフォームを対象に含むソースセット）に置くと、
-    // Room 3.0のKSPが次のエラーでコンパイルを拒否することを再現する:
-    //   e: [ksp] Only suspend functions are allowed in DAOs
-    //      declared in source sets targeting non-Android platforms.
-    // 再現コマンド: ./gradlew :shared:compileKotlinJvm
-    @Query("SELECT * FROM Cat")
-    fun getCatsBlocking(): List<Cat>
 }
 
 @Database(entities = [Cat::class], version = 1)
