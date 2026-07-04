@@ -11,6 +11,12 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        // @ConstructedByのexpect object（と生成actual）に対するBeta警告(KT-61573)を抑制。
+        // Room 3.0自体がこの仕組みの上に成立しているため、本PoCでは意図的に使用している
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
