@@ -1,0 +1,75 @@
+name: CI
+
+# PRのopen時とopen以降のpush毎、およびmainへのpushで発火
+# （mainでの実行はGradleキャッシュのシードも兼ねる。PRはmainのキャッシュを読む）
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# 同一PRへの連続pushでは古い実行をキャンセルする。mainへのpushはキャンセルしない
+# （キャッシュのシードを完走させるため）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      # 1プラットフォームの失敗で他を打ち切らず、全プラットフォームの結果を出す
+      fail-fast: false
+      matrix:
+        include:
+          # iOSのactualが未実装のため `./gradlew build` は失敗する。
+          # 必ずターゲット別タスクで実行する（CLAUDE.md参照）
+          - name: Android
+            key: android
+            tasks: ":androidApp:assembleDebug :shared:testAndroidHostTest"
+          - name: Desktop (JVM)
+            key: desktop
+            tasks: ":desktopApp:build :shared:jvmTest"
+          # webpackタスクはブラウザ不要でjs/wasmJs両ターゲットのコンパイル確認になる
+          - name: Web (JS / WasmJs)
+            key: web
+            tasks: ":webApp:jsBrowserDevelopmentWebpack :webApp:wasmJsBrowserDevelopmentWebpack"
+    steps:
+      - uses: actions/checkout@v7
+
+      # Gradleクライアント起動用のJVM。ビルド本体のdaemon JVMは
+      # gradle-daemon-jvm.properties（Corretto 21）がfoojay経由で自動プロビジョニングする
+      - uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 21
+
+      # Gradle wrapperの検証（validate-wrappers）はv6でデフォルト有効。
+      # cache-read-onlyはデフォルト（main=書き込み、それ以外=読み取り専用）に任せる
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          # 構成キャッシュの永続化に必要（secret未設定でも各実行で構成をやり直すだけで害はない）
+          # 生成方法: openssl rand -base64 16
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Kotlin Gradle PluginがNode.js/Yarnを$GRADLE_USER_HOME配下に自動DLするため
+          # キャッシュ対象に追加する（caches/notificationsはデフォルト値の維持）
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            nodejs
+            yarn
+
+      - name: Build & test
+        run: ./gradlew ${{ matrix.tasks }}
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-${{ matrix.key }}
+          path: '**/build/reports/tests/'
