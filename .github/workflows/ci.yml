@@ -20,25 +20,37 @@ permissions:
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       # 1プラットフォームの失敗で他を打ち切らず、全プラットフォームの結果を出す
       fail-fast: false
       matrix:
         include:
-          # iOSのactualが未実装のため `./gradlew build` は失敗する。
-          # 必ずターゲット別タスクで実行する（CLAUDE.md参照）
+          # CIは実行時間の均一化のためターゲット別タスクで実行する（CLAUDE.md参照）
           - name: Android
             key: android
+            runner: ubuntu-latest
+            timeout: 40
             tasks: ":androidApp:assembleDebug :shared:testAndroidHostTest"
           - name: Desktop (JVM)
             key: desktop
+            runner: ubuntu-latest
+            timeout: 40
             tasks: ":desktopApp:build :shared:jvmTest"
           # webpackタスクはブラウザ不要でjs/wasmJs両ターゲットのコンパイル確認になる
           - name: Web (JS / WasmJs)
             key: web
+            runner: ubuntu-latest
+            timeout: 40
             tasks: ":webApp:jsBrowserDevelopmentWebpack :webApp:wasmJsBrowserDevelopmentWebpack"
+          # シミュレータ上でのDAOテスト実行と、SPMが参照するXCFrameworkの生成。
+          # Kotlin/Nativeのビルドが重いためタイムアウトを長めに取る
+          - name: iOS
+            key: ios
+            runner: macos-15
+            timeout: 60
+            tasks: ":shared:iosSimulatorArm64Test :shared:syncSharedXCFrameworkForSpm"
     steps:
       - uses: actions/checkout@v7
 
@@ -64,8 +76,28 @@ jobs:
             nodejs
             yarn
 
+      # Kotlin/Nativeツールチェーン（~/.konan）はsetup-gradleのキャッシュ対象外のため個別にキャッシュ
+      - uses: actions/cache@v4
+        if: matrix.key == 'ios'
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+
       - name: Build & test
         run: ./gradlew ${{ matrix.tasks }}
+
+      # SPM統合込みでiOSアプリ本体をビルドする（署名なし・シミュレータ向け）。
+      # 直前のGradleステップが生成した iosApp/SharedFramework/Shared.xcframework を
+      # ローカルSwiftパッケージのbinaryTargetとして取り込む
+      - name: Build iOS app (xcodebuild)
+        if: matrix.key == 'ios'
+        run: |
+          xcodebuild build \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Upload test reports
         if: failure()

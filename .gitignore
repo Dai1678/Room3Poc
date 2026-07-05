@@ -19,3 +19,5 @@ captures
 node_modules/
 docs/
 CLAUDE.md
+# Gradleが生成するSPM用のKotlin成果物（:shared:syncSharedXCFrameworkForSpm）
+iosApp/SharedFramework/Shared.xcframework/

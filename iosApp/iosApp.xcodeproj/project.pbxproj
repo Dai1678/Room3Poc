@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7A31C4E2D5F6089B1A2C3D4E /* Shared in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4F6A2B8C1D3E5F70819243 /* Shared */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		8776C9F820C7F52ECDA6EB39 /* Room3Poc.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Room3Poc.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -41,6 +45,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7A31C4E2D5F6089B1A2C3D4E /* Shared in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,7 +76,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A954C05BA092DB7C611B0D4B /* Build configuration list for PBXNativeTarget "iosApp" */;
 			buildPhases = (
-				90E91DB2650217327A0B7753 /* Compile Kotlin Framework */,
 				6367EC3DA30CC3561D60805A /* Sources */,
 				2BFB840B8085F20BAB836382 /* Frameworks */,
 				E22943925892ED9D2E52C1F7 /* Resources */,
@@ -85,6 +89,7 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				9E4F6A2B8C1D3E5F70819243 /* Shared */,
 			);
 			productName = iosApp;
 			productReference = 8776C9F820C7F52ECDA6EB39 /* Room3Poc.app */;
@@ -114,6 +119,9 @@
 			);
 			mainGroup = 3C4764B8F57C881746D4CA0D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5B8D2F1A9C0E3B4D6F7A8091 /* XCLocalSwiftPackageReference "SharedFramework" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 141E582F0EAA93BB911C1C3D /* Products */;
 			projectDirPath = "";
@@ -133,28 +141,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		90E91DB2650217327A0B7753 /* Compile Kotlin Framework */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Compile Kotlin Framework";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6367EC3DA30CC3561D60805A /* Sources */ = {
@@ -368,6 +354,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5B8D2F1A9C0E3B4D6F7A8091 /* XCLocalSwiftPackageReference "SharedFramework" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = SharedFramework;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9E4F6A2B8C1D3E5F70819243 /* Shared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Shared;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0A1BAA62FEC40EC3A89796A0 /* Project object */;
 }

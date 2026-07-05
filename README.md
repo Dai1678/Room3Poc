@@ -1,7 +1,7 @@
 # Room3Poc
 
 Room 3.0のKotlin Multiplatform対応を検証するPoCプロジェクト。
-`commonMain`に1回だけ書いた同一のDAOが Android / Desktop(JVM) / Web(WasmJs) で動作し、Webではブラウザをリロードしてもデータが残る（OPFS永続化）ことを確認する。
+`commonMain`に1回だけ書いた同一のDAOが Android / iOS / Desktop(JVM) / Web(WasmJs) で動作し、Webではブラウザをリロードしてもデータが残る（OPFS永続化）ことを確認する。
 
 アプリは画面1つ・Entity1つの最小構成のCatリスト。名前を入力して追加すると、`Flow`を購読している一覧に即座に反映され、アプリを再起動（Webはリロード）してもデータが残る。
 
@@ -13,9 +13,7 @@ Room 3.0のKotlin Multiplatform対応を検証するPoCプロジェクト。
 | Android | ✅ 動作確認済み（API 36エミュレータ） | `getDatabasePath("cats.db")`（`BundledSQLiteDriver`） |
 | Web (WasmJs) | ✅ 動作確認済み・リロード後もデータ残存 | OPFS上の`cats.db`（`WebWorkerSQLiteDriver`） |
 | Web (JS) | ビルド確認のみ（WasmJs不調時のフォールバック） | 同上 |
-| iOS | ⚠️ 未実装（ターゲットは生成済み、`actual`未実装） | — |
-
-> ⚠️ iOS用の`actual`が未実装のため、`./gradlew build`のような**全ターゲット一括ビルドは失敗する**。ターゲット別のタスクを使うこと。
+| iOS | ✅ 動作確認済み（iPhone 17 Pro / iOS 26.1シミュレータ・再起動後もデータ残存） | `Documents/cats.db`（`BundledSQLiteDriver`） |
 
 ## アーキテクチャ
 
@@ -26,6 +24,7 @@ shared/commonMain
         │
         ├── jvmMain:     actual → BundledSQLiteDriver → ローカルファイル
         ├── androidMain: actual → BundledSQLiteDriver → アプリ内DBファイル
+        ├── iosMain:     actual → BundledSQLiteDriver → Documents/cats.db
         └── webMain:     actual → WebWorkerSQLiteDriver（js/wasmJs共通）
                                         │ postMessage (open/prepare/step/close)
                                         ▼
@@ -41,7 +40,8 @@ DAO・Entity・クエリは`commonMain`に1回しか書かない。プラット�
 
 - `shared/` — Entity・DAO・DB定義（commonMain）と各プラットフォームの`actual`、共通Compose UI
 - `androidApp/` / `desktopApp/` / `webApp/` — 各プラットフォームのエントリポイント
-- `iosApp/` — iOSエントリポイント（PoCでは未使用）
+- `iosApp/` — iOSエントリポイント（SwiftUIから`ComposeUIViewController`を表示）。sharedの成果物は**SPM（ローカルSwiftパッケージ）経由**で取り込む
+  - `iosApp/SharedFramework/` — `Shared.xcframework`を`binaryTarget`で参照するローカルパッケージ。XCFramework本体はGradleが生成する（gitignore対象）
 - `sqliteWasmWorker/` — Web用Workerモジュール。`WebWorkerSQLiteDriver`のメッセージングプロトコル（open/prepare/step/close）を実装した`worker.js`と、`@sqlite.org/sqlite-wasm`へのnpm依存を持つ。
   - [danysantiago/room-web-demo](https://github.com/danysantiago/room-web-demo/)（Apache-2.0）からの移植
 
@@ -59,6 +59,23 @@ DAO・Entity・クエリは`commonMain`に1回しか書かない。プラット�
 
 # Web (JS) — フォールバック用
 ./gradlew :webApp:jsBrowserDevelopmentRun
+
+# iOS — 先にXCFrameworkを生成してから、XcodeでiosApp.xcodeprojを開いてRun
+./gradlew :shared:syncSharedXCFrameworkForSpm
+open iosApp/iosApp.xcodeproj
+```
+
+### iOSターゲットの注意点（SPM統合）
+
+- sharedのKotlin成果物（`Shared.xcframework`）は、ローカルSwiftパッケージ`iosApp/SharedFramework`の`binaryTarget`としてiosAppに取り込まれる
+- **sharedのKotlinコードを変更したら`./gradlew :shared:syncSharedXCFrameworkForSpm`を再実行**してからXcodeでビルドする（Xcodeビルドは自動でGradleを呼ばない）
+- クローン直後はXCFrameworkが存在せずXcodeのパッケージ解決に失敗するため、必ず先に上記タスクを実行する
+- コマンドラインでビルドする場合:
+
+```bash
+xcodebuild build -project iosApp/iosApp.xcodeproj -scheme iosApp \
+  -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  CODE_SIGNING_ALLOWED=NO
 ```
 
 ### Webターゲットの注意点
@@ -72,6 +89,9 @@ DAO・Entity・クエリは`commonMain`に1回しか書かない。プラット�
 ```bash
 # DAOの挿入・Flow購読・再オープン後のデータ残存を検証するJVMテスト
 ./gradlew :shared:jvmTest --tests "dev.dai.room3poc.db.CatDaoJvmTest"
+
+# 同内容のiOSテスト（シミュレータをヘッドレス起動して実行）
+./gradlew :shared:iosSimulatorArm64Test
 ```
 
 ## Room 3.0まわりのメモ
