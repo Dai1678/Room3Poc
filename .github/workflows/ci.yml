@@ -84,6 +84,18 @@ jobs:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
 
+      # Compose Multiplatform 1.11のui-uikitはiOS 26 SDKのAPI（UIUtilities framework /
+      # UIViewLayoutRegion）を参照するため、ランナーのデフォルトXcode 16.4ではシミュレータ
+      # テストバイナリのリンクが `Undefined symbols: _OBJC_CLASS_$_UIViewLayoutRegion` で失敗する。
+      # イメージに同梱されている最新のXcode 26系へ切り替える
+      - name: Select Xcode 26
+        if: matrix.key == 'ios'
+        run: |
+          XCODE_APP=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)
+          echo "Selected: $XCODE_APP"
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
       - name: Build & test
         run: ./gradlew ${{ matrix.tasks }}
 
