@@ -80,7 +80,7 @@ jobs:
             yarn
 
       # Kotlin/Nativeツールチェーン（~/.konan）はsetup-gradleのキャッシュ対象外のため個別にキャッシュ
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         if: matrix.key == 'ios'
         with:
           path: ~/.konan
