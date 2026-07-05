@@ -1,14 +1,18 @@
 name: CI
 
-# PRのopen時とopen以降のpush毎に発火（types未指定時のデフォルトと同じだが意図を明示）
+# PRのopen時とopen以降のpush毎、およびmainへのpushで発火
+# （mainでの実行はGradleキャッシュのシードも兼ねる。PRはmainのキャッシュを読む）
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
 
-# 同一PRへの連続pushでは古い実行をキャンセルする
+# 同一PRへの連続pushでは古い実行をキャンセルする。mainへのpushはキャンセルしない
+# （キャッシュのシードを完走させるため）
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -45,12 +49,10 @@ jobs:
           distribution: corretto
           java-version: 21
 
-      # Gradle wrapperの検証（validate-wrappers）はv6でデフォルト有効
+      # Gradle wrapperの検証（validate-wrappers）はv6でデフォルト有効。
+      # cache-read-onlyはデフォルト（main=書き込み、それ以外=読み取り専用）に任せる
       - uses: gradle/actions/setup-gradle@v6
         with:
-          # このワークフローはPRでしか走らないため、デフォルト値
-          # （非defaultブランチ=read-only）のままだとキャッシュが一切保存されない
-          cache-read-only: false
           # 構成キャッシュの永続化に必要（secret未設定でも各実行で構成をやり直すだけで害はない）
           # 生成方法: openssl rand -base64 16
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
