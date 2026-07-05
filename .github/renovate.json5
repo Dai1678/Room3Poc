@@ -32,6 +32,15 @@
       automerge: true,
     },
 
+    // GitHub Actionsはメジャータグ参照（例: actions/checkout@v7）の運用を維持する。
+    // グローバルのrangeStrategy: "pin"のままだとv7がv7.0.0のような完全バージョンに
+    // pinされ、actionsのパッチリリース毎にPRが出てしまうため、replaceに戻す
+    {
+      description: "GitHub Actionsはメジャータグ運用を維持（完全バージョンにpinしない）",
+      matchManagers: ["github-actions"],
+      rangeStrategy: "replace",
+    },
+
     // Kotlin / KSP / Compose Compilerプラグイン / Compose Multiplatformは版数が
     // 結合しているため1グループ＝1PRで更新する。新しいKotlinに対応する
     // Compose Compiler・CMPが出揃うまでビルドが赤くなり得るため、

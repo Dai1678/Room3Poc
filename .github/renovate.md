@@ -77,11 +77,18 @@ Renovateを**セルフホスト**（GitHub Actions上でRenovate CLIを実行）
    ```bash
    npx --yes --package renovate -- renovate-config-validator renovate-config.js .github/renovate.json5
    ```
-2. GitHub App設定後、`workflow_dispatch`（`logLevel: debug`＋`dryRun: true`）で実行し、
+2. ローカルdry-run（任意）: リポジトリルートで以下を実行すると、ワーキングツリーの
+   設定ファイルを使って依存検出とバージョンルックアップだけを試せる（PR作成・
+   postUpgradeTasksは行われない）。`workflow_dispatch`はワークフローがデフォルト
+   ブランチに入るまで使えないため、**マージ前の設定確認はこれを使う**:
+   ```bash
+   GITHUB_COM_TOKEN=$(gh auth token) LOG_LEVEL=debug npx --yes renovate@43.251.3 --platform=local
+   ```
+3. GitHub App設定後、`workflow_dispatch`（`logLevel: debug`＋`dryRun: true`）で実行し、
    ログで `gradle` / `gradle-wrapper` / `npm` / `github-actions` / `swift` / `custom.regex` の
    各マネージャの依存検出結果を確認する
-3. `dryRun: false`で実行し、Dependency DashboardのIssueが作成されることを確認する
-4. 動作テスト（任意）: 依存を1つ意図的に古くしてから実行し、以下を確認する
+4. `dryRun: false`で実行し、Dependency DashboardのIssueが作成されることを確認する
+5. 動作テスト（任意）: 依存を1つ意図的に古くしてから実行し、以下を確認する
    - `@sqlite.org/sqlite-wasm`を古くする → 更新PRに`kotlin-js-store/yarn.lock`と
      `kotlin-js-store/wasm/yarn.lock`の差分が含まれる
    - `libs.versions.toml`のkotlinを古くする → kotlin/KSP/CMPが単一PR（`kotlin`グループ）に
