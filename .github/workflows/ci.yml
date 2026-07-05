@@ -2,11 +2,13 @@ name: CI
 
 # PRのopen時とopen以降のpush毎、およびmainへのpushで発火
 # （mainでの実行はGradleキャッシュのシードも兼ねる。PRはmainのキャッシュを読む）
+
 on:
   push:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 # 同一PRへの連続pushでは古い実行をキャンセルする。mainへのpushはキャンセルしない
 # （キャッシュのシードを完走させるため）
