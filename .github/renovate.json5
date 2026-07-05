@@ -1,0 +1,128 @@
+// Renovateのリポジトリ設定（運用手順は .github/renovate.md 参照）。
+// セルフホスト側のグローバル設定（allowedCommands等）は renovate-config.js にある。
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":dependencyDashboard",
+  ],
+  timezone: "Asia/Tokyo",
+
+  // Version Catalog（gradle/libs.versions.toml）は元々exact指定。
+  // sqliteWasmWorker/worker/package.json の ^レンジもexactにpinして、
+  // 依存更新をRenovate PR経由に一本化する
+  rangeStrategy: "pin",
+
+  // 週2回のスケジュール実行なので、config:recommended既定の
+  // 「1時間にPR 2件まで」制限を外し、1回の実行で必要なPRを全部出す
+  prHourlyLimit: 0,
+  prConcurrentLimit: 10,
+
+  // CI通過後にGitHubのauto-merge機能でマージする。
+  // リポジトリ側で「Allow auto-merge」と必須status checkの設定が必要（.github/renovate.md参照）
+  platformAutomerge: true,
+
+  packageRules: [
+    // packageRulesは「後に書いたルールが勝つ」。この汎用automergeルールを先頭に置き、
+    // 後続のkotlin / AGPグループが automerge: false で上書きする
+    {
+      description: "安定版のpatch/minorはCI通過後にautomerge",
+      matchUpdateTypes: ["patch", "minor"],
+      matchCurrentVersion: "!/^0/",
+      automerge: true,
+    },
+
+    // GitHub Actionsはメジャータグ参照（例: actions/checkout@v7）の運用を維持する。
+    // グローバルのrangeStrategy: "pin"のままだとv7がv7.0.0のような完全バージョンに
+    // pinされ、actionsのパッチリリース毎にPRが出てしまうため、replaceに戻す
+    {
+      description: "GitHub Actionsはメジャータグ運用を維持（完全バージョンにpinしない）",
+      matchManagers: ["github-actions"],
+      rangeStrategy: "replace",
+    },
+
+    // Kotlin / KSP / Compose Compilerプラグイン / Compose Multiplatformは版数が
+    // 結合しているため1グループ＝1PRで更新する。新しいKotlinに対応する
+    // Compose Compiler・CMPが出揃うまでビルドが赤くなり得るため、
+    // automergeせず人間が判断してマージする
+    {
+      description: "Kotlinエコシステムを1PRに束ねる（automergeしない）",
+      groupName: "kotlin",
+      matchPackageNames: [
+        "org.jetbrains.kotlin:**", // kotlin-test等のMavenモジュール
+        "org.jetbrains.kotlin.**", // KotlinプラグインID（multiplatform / plugin.compose等）
+        "com.google.devtools.ksp**", // KSPプラグインID・Mavenモジュール
+        "org.jetbrains.compose**", // CMPプラグインID・Compose系Mavenモジュール（material3含む）
+      ],
+      automerge: false,
+    },
+
+    // AGPはCMPプラグイン側の対応バージョンと結合し得る
+    // （例: AGP 9.0にはCMP 1.9.3 / 1.10.0以降が必要）ため別グループにし、
+    // automergeせずCMPとの互換を確認してからマージする
+    {
+      description: "AGPを1PRに束ねる（CMPとの互換確認が必要なのでautomergeしない）",
+      groupName: "android-gradle-plugin",
+      matchPackageNames: ["com.android**"],
+      automerge: false,
+    },
+
+    // Web npm依存（sqliteWasmWorker/worker/package.json）の更新時は、
+    // Kotlin Gradle Pluginが管理するyarn.lock（kotlin-js-store/＝js用、
+    // kotlin-js-store/wasm/＝wasmJs用）を再生成して同じPRに含める。
+    // matchFileNamesで依存の定義ファイルに絞る（custom.regexはRenovate CLI
+    // 自己更新（renovate.yml）にもマッチするため、絞らないとCLIだけの更新でも
+    // 毎回無関係なGradle実行が走ってしまう）
+    {
+      description: "npm依存の更新時にkotlin-js-storeのyarn.lockを再生成",
+      matchManagers: ["npm", "custom.regex"],
+      matchFileNames: ["sqliteWasmWorker/worker/package.json", "**/*.gradle.kts"],
+      postUpgradeTasks: {
+        commands: ["./gradlew kotlinUpgradeYarnLock kotlinWasmUpgradeYarnLock"],
+        fileFilters: ["kotlin-js-store/**"],
+        executionMode: "update",
+      },
+    },
+
+    // SPM依存の更新時はPackage.resolvedを再生成して同じPRに含める。
+    // 現状SharedKit/Package.swiftに外部依存は無いため実質no-opだが、
+    // 依存を追加したときにそのまま機能する。
+    // 外部SPM依存は必ずPackage.swiftに書くこと — Xcodeプロジェクト直付け
+    // （project.pbxproj）の依存はswiftマネージャが検出できない
+    {
+      description: "SPM依存の更新時にPackage.resolvedを再生成",
+      matchManagers: ["swift"],
+      postUpgradeTasks: {
+        commands: [
+          "xcodebuild -resolvePackageDependencies -project iosApp/iosApp.xcodeproj -scheme iosApp",
+        ],
+        fileFilters: ["**/Package.resolved"],
+        executionMode: "update",
+      },
+    },
+  ],
+
+  customManagers: [
+    // build.gradle.kts内の npm("name", "version") 宣言を検出する。
+    // 現状の npm("sqlite-wasm-worker", <ローカルdir>) はバージョン文字列でないため
+    // 対象外で、将来バージョン付きnpm()を書いた場合に効く
+    {
+      customType: "regex",
+      description: "gradle.kts内のnpm(\"name\", \"version\")をnpm datasourceで更新",
+      managerFilePatterns: ["/\\.gradle\\.kts$/"],
+      matchStrings: [
+        "npm\\(\\s*\"(?<depName>@?[\\w./-]+)\"\\s*,\\s*\"(?<currentValue>[^\"]+)\"\\s*\\)",
+      ],
+      datasourceTemplate: "npm",
+    },
+    // renovate.yml内の `npx renovate@x.y.z`（Renovate CLI自身）を最新に保つ
+    {
+      customType: "regex",
+      description: "Renovate CLI自身のバージョン更新",
+      managerFilePatterns: ["/\\.github/workflows/renovate\\.yml$/"],
+      matchStrings: ["renovate@(?<currentValue>[0-9.]+)"],
+      depNameTemplate: "renovate",
+      datasourceTemplate: "npm",
+    },
+  ],
+}
