@@ -12,7 +12,7 @@ Room 3.0のKotlin Multiplatform対応を検証するPoCプロジェクト。
 | Desktop (JVM) | ✅ 動作確認済み | `$TMPDIR/cats.db`（`BundledSQLiteDriver`） |
 | Android | ✅ 動作確認済み（API 36エミュレータ） | `getDatabasePath("cats.db")`（`BundledSQLiteDriver`） |
 | Web (WasmJs) | ✅ 動作確認済み・リロード後もデータ残存 | OPFS上の`cats.db`（`WebWorkerSQLiteDriver`） |
-| Web (JS) | ビルド確認のみ（WasmJs不調時のフォールバック） | 同上 |
+| Web (JS) | ✅ 動作確認済み・ブラウザ再起動後もデータ残存（WasmJs不調時のフォールバック） | 同上 |
 | iOS | ✅ 動作確認済み（iPhone 17 Pro / iOS 26.1シミュレータ・再起動後もデータ残存） | `Documents/cats.db`（`BundledSQLiteDriver`） |
 
 ## アーキテクチャ
