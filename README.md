@@ -68,7 +68,7 @@ open iosApp/iosApp.xcodeproj
 
 - iosAppスキームのBuild Pre-actionが`./gradlew :shared:embedAndSignAppleFrameworkForXcode`を実行して`BUILT_PRODUCTS_DIR`に`Shared.framework`を供給し、ローカルパッケージ`SharedKit`のSwiftコードが`import Shared`する。**sharedのKotlinを変更しても手動手順は不要**（ビルドのたびに自動で再ビルドされる）
 - 共有スキームと**同名のユーザースキーム**（`xcuserdata`内）があるとそちらが優先され、Pre-actionが実行されずビルドが失敗する。`import Shared`の解決エラーが出たらまずこれを疑う
-- XcodeからGradleを起動するため、Xcode（GUI）から見える環境にJDKが必要（ターミナルの`xcodebuild`ならシェルの`JAVA_HOME`が使われる）
+- Pre-actionはGradle起動用の`JAVA_HOME`を自動補完する（既存の`JAVA_HOME`→`/usr/libexec/java_home`→Android Studio同梱JBRの順）。GUI起動のXcode/Android Studioは環境変数`JAVA_HOME`を持たないため、この補完がないと**Pre-actionが無言で失敗**して`import Shared`の解決エラーになる
 - コマンドラインでビルドする場合:
 
 ```bash
