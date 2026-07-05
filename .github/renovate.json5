@@ -69,10 +69,14 @@
 
     // Web npm依存（sqliteWasmWorker/worker/package.json）の更新時は、
     // Kotlin Gradle Pluginが管理するyarn.lock（kotlin-js-store/＝js用、
-    // kotlin-js-store/wasm/＝wasmJs用）を再生成して同じPRに含める
+    // kotlin-js-store/wasm/＝wasmJs用）を再生成して同じPRに含める。
+    // matchFileNamesで依存の定義ファイルに絞る（custom.regexはRenovate CLI
+    // 自己更新（renovate.yml）にもマッチするため、絞らないとCLIだけの更新でも
+    // 毎回無関係なGradle実行が走ってしまう）
     {
       description: "npm依存の更新時にkotlin-js-storeのyarn.lockを再生成",
       matchManagers: ["npm", "custom.regex"],
+      matchFileNames: ["sqliteWasmWorker/worker/package.json", "**/*.gradle.kts"],
       postUpgradeTasks: {
         commands: ["./gradlew kotlinUpgradeYarnLock kotlinWasmUpgradeYarnLock"],
         fileFilters: ["kotlin-js-store/**"],
