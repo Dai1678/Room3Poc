@@ -17,6 +17,9 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
+    // iosAppは公式のLocal SPM統合で取り込む: iosAppスキームのBuild Pre-actionが
+    // :shared:embedAndSignAppleFrameworkForXcode を実行し、ローカルSwiftパッケージ
+    // （iosApp/SharedKit）のSwiftコードがこのframeworkをimportする
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -73,6 +76,11 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.androidx.sqlite.bundled)
         }
+        // BundledSQLiteDriverならframeworkへのlinkerOpts追加は不要
+        // （NativeSQLiteDriverを使う場合のみ -lsqlite3 が必要）
+        iosMain.dependencies {
+            implementation(libs.androidx.sqlite.bundled)
+        }
         // js/wasmJs共有の中間ソースセット。Web用ドライバーはここに置く
         webMain.dependencies {
             implementation(libs.androidx.sqlite.web)
@@ -97,6 +105,8 @@ dependencies {
     // Web対応(Phase 3)で使用。先に登録しても害はない
     add("kspJs", libs.androidx.room.compiler)
     add("kspWasmJs", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 }
 
 room3 {

@@ -2,11 +2,13 @@ name: CI
 
 # PRのopen時とopen以降のpush毎、およびmainへのpushで発火
 # （mainでの実行はGradleキャッシュのシードも兼ねる。PRはmainのキャッシュを読む）
+
 on:
   push:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 # 同一PRへの連続pushでは古い実行をキャンセルする。mainへのpushはキャンセルしない
 # （キャッシュのシードを完走させるため）
@@ -20,25 +22,38 @@ permissions:
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       # 1プラットフォームの失敗で他を打ち切らず、全プラットフォームの結果を出す
       fail-fast: false
       matrix:
         include:
-          # iOSのactualが未実装のため `./gradlew build` は失敗する。
-          # 必ずターゲット別タスクで実行する（CLAUDE.md参照）
+          # CIは実行時間の均一化のためターゲット別タスクで実行する（CLAUDE.md参照）
           - name: Android
             key: android
+            runner: ubuntu-latest
+            timeout: 40
             tasks: ":androidApp:assembleDebug :shared:testAndroidHostTest"
           - name: Desktop (JVM)
             key: desktop
+            runner: ubuntu-latest
+            timeout: 40
             tasks: ":desktopApp:build :shared:jvmTest"
           # webpackタスクはブラウザ不要でjs/wasmJs両ターゲットのコンパイル確認になる
           - name: Web (JS / WasmJs)
             key: web
+            runner: ubuntu-latest
+            timeout: 40
             tasks: ":webApp:jsBrowserDevelopmentWebpack :webApp:wasmJsBrowserDevelopmentWebpack"
+          # シミュレータ上でのDAOテスト実行と、デバイス向けframeworkのコンパイル確認
+          # （シミュレータ向けは後続のxcodebuildのPre-actionでembedAndSignが担う）。
+          # Kotlin/Nativeのビルドが重いためタイムアウトを長めに取る。
+          - name: iOS
+            key: ios
+            runner: macos-26
+            timeout: 60
+            tasks: ":shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosArm64"
     steps:
       - uses: actions/checkout@v7
 
@@ -64,8 +79,29 @@ jobs:
             nodejs
             yarn
 
+      # Kotlin/Nativeツールチェーン（~/.konan）はsetup-gradleのキャッシュ対象外のため個別にキャッシュ
+      - uses: actions/cache@v6
+        if: matrix.key == 'ios'
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+
       - name: Build & test
         run: ./gradlew ${{ matrix.tasks }}
+
+      # SPM統合込みでiOSアプリ本体をビルドする（署名なし・シミュレータ向け）。
+      # 公式のLocal SPM統合: iosAppスキームのBuild Pre-actionが
+      # :shared:embedAndSignAppleFrameworkForXcode を実行してKotlin frameworkを供給し、
+      # ローカルSwiftパッケージ（iosApp/SharedKit）がそれをimportする
+      - name: Build iOS app (xcodebuild)
+        if: matrix.key == 'ios'
+        run: |
+          xcodebuild build \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Upload test reports
         if: failure()
