@@ -44,13 +44,14 @@ jobs:
             runner: ubuntu-latest
             timeout: 40
             tasks: ":webApp:jsBrowserDevelopmentWebpack :webApp:wasmJsBrowserDevelopmentWebpack"
-          # シミュレータ上でのDAOテスト実行と、SPMが参照するXCFrameworkの生成。
+          # シミュレータ上でのDAOテスト実行と、デバイス向けframeworkのコンパイル確認
+          # （シミュレータ向けは後続のxcodebuildのPre-actionでembedAndSignが担う）。
           # Kotlin/Nativeのビルドが重いためタイムアウトを長めに取る
           - name: iOS
             key: ios
             runner: macos-15
             timeout: 60
-            tasks: ":shared:iosSimulatorArm64Test :shared:syncSharedXCFrameworkForSpm"
+            tasks: ":shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosArm64"
     steps:
       - uses: actions/checkout@v7
 
@@ -87,8 +88,9 @@ jobs:
         run: ./gradlew ${{ matrix.tasks }}
 
       # SPM統合込みでiOSアプリ本体をビルドする（署名なし・シミュレータ向け）。
-      # 直前のGradleステップが生成した iosApp/SharedFramework/Shared.xcframework を
-      # ローカルSwiftパッケージのbinaryTargetとして取り込む
+      # 公式のLocal SPM統合: iosAppスキームのBuild Pre-actionが
+      # :shared:embedAndSignAppleFrameworkForXcode を実行してKotlin frameworkを供給し、
+      # ローカルSwiftパッケージ（iosApp/SharedKit）がそれをimportする
       - name: Build iOS app (xcodebuild)
         if: matrix.key == 'ios'
         run: |

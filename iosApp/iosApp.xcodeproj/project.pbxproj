@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7A31C4E2D5F6089B1A2C3D4E /* Shared in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4F6A2B8C1D3E5F70819243 /* Shared */; };
+		7A31C4E2D5F6089B1A2C3D4E /* SharedKit in Frameworks */ = {isa = PBXBuildFile; productRef = 9E4F6A2B8C1D3E5F70819243 /* SharedKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,7 +45,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7A31C4E2D5F6089B1A2C3D4E /* Shared in Frameworks */,
+				7A31C4E2D5F6089B1A2C3D4E /* SharedKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,7 +89,7 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
-				9E4F6A2B8C1D3E5F70819243 /* Shared */,
+				9E4F6A2B8C1D3E5F70819243 /* SharedKit */,
 			);
 			productName = iosApp;
 			productReference = 8776C9F820C7F52ECDA6EB39 /* Room3Poc.app */;
@@ -120,7 +120,7 @@
 			mainGroup = 3C4764B8F57C881746D4CA0D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				5B8D2F1A9C0E3B4D6F7A8091 /* XCLocalSwiftPackageReference "SharedFramework" */,
+				5B8D2F1A9C0E3B4D6F7A8091 /* XCLocalSwiftPackageReference "SharedKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 141E582F0EAA93BB911C1C3D /* Products */;
@@ -356,16 +356,16 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		5B8D2F1A9C0E3B4D6F7A8091 /* XCLocalSwiftPackageReference "SharedFramework" */ = {
+		5B8D2F1A9C0E3B4D6F7A8091 /* XCLocalSwiftPackageReference "SharedKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = SharedFramework;
+			relativePath = SharedKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		9E4F6A2B8C1D3E5F70819243 /* Shared */ = {
+		9E4F6A2B8C1D3E5F70819243 /* SharedKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = Shared;
+			productName = SharedKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

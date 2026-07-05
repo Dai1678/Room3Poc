@@ -1,6 +1,5 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -18,9 +17,9 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    // iosAppはこのXCFrameworkをローカルSwiftパッケージ（iosApp/SharedFramework）の
-    // binaryTarget経由で取り込む（SPM統合）。生成: :shared:syncSharedXCFrameworkForSpm
-    val sharedXCFramework = XCFramework("Shared")
+    // iosAppは公式のLocal SPM統合で取り込む: iosAppスキームのBuild Pre-actionが
+    // :shared:embedAndSignAppleFrameworkForXcode を実行し、ローカルSwiftパッケージ
+    // （iosApp/SharedKit）のSwiftコードがこのframeworkをimportする
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -28,7 +27,6 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
-            sharedXCFramework.add(this)
         }
     }
     
@@ -109,14 +107,6 @@ dependencies {
     add("kspWasmJs", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
-}
-
-// SPMのbinaryTargetが参照する場所へXCFrameworkを配置する。
-// iosAppをXcodeでビルドする前（と、sharedのKotlinを変更した後）に実行すること
-tasks.register<Sync>("syncSharedXCFrameworkForSpm") {
-    dependsOn("assembleSharedDebugXCFramework")
-    from(layout.buildDirectory.dir("XCFrameworks/debug/Shared.xcframework"))
-    into(rootDir.resolve("iosApp/SharedFramework/Shared.xcframework"))
 }
 
 room3 {

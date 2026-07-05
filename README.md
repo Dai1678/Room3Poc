@@ -40,8 +40,8 @@ DAO・Entity・クエリは`commonMain`に1回しか書かない。プラット�
 
 - `shared/` — Entity・DAO・DB定義（commonMain）と各プラットフォームの`actual`、共通Compose UI
 - `androidApp/` / `desktopApp/` / `webApp/` — 各プラットフォームのエントリポイント
-- `iosApp/` — iOSエントリポイント（SwiftUIから`ComposeUIViewController`を表示）。sharedの成果物は**SPM（ローカルSwiftパッケージ）経由**で取り込む
-  - `iosApp/SharedFramework/` — `Shared.xcframework`を`binaryTarget`で参照するローカルパッケージ。XCFramework本体はGradleが生成する（gitignore対象）
+- `iosApp/` — iOSエントリポイント。[公式のLocal SPM統合](https://kotlinlang.org/docs/multiplatform/multiplatform-spm-local-integration.html)を採用: `Shared`をimportするSwiftコード（`ComposeView`）をローカルSwiftパッケージに置き、Kotlin frameworkはスキームのBuild Pre-action（`embedAndSignAppleFrameworkForXcode`）が自動ビルド・供給する
+  - `iosApp/SharedKit/` — そのローカルSwiftパッケージ（`binaryTarget`は不使用）
 - `sqliteWasmWorker/` — Web用Workerモジュール。`WebWorkerSQLiteDriver`のメッセージングプロトコル（open/prepare/step/close）を実装した`worker.js`と、`@sqlite.org/sqlite-wasm`へのnpm依存を持つ。
   - [danysantiago/room-web-demo](https://github.com/danysantiago/room-web-demo/)（Apache-2.0）からの移植
 
@@ -60,16 +60,15 @@ DAO・Entity・クエリは`commonMain`に1回しか書かない。プラット�
 # Web (JS) — フォールバック用
 ./gradlew :webApp:jsBrowserDevelopmentRun
 
-# iOS — 先にXCFrameworkを生成してから、XcodeでiosApp.xcodeprojを開いてRun
-./gradlew :shared:syncSharedXCFrameworkForSpm
+# iOS — XcodeでiosApp.xcodeprojを開いてRun（KotlinはBuild Pre-actionで自動ビルドされる）
 open iosApp/iosApp.xcodeproj
 ```
 
-### iOSターゲットの注意点（SPM統合）
+### iOSターゲットの注意点（Local SPM統合）
 
-- sharedのKotlin成果物（`Shared.xcframework`）は、ローカルSwiftパッケージ`iosApp/SharedFramework`の`binaryTarget`としてiosAppに取り込まれる
-- **sharedのKotlinコードを変更したら`./gradlew :shared:syncSharedXCFrameworkForSpm`を再実行**してからXcodeでビルドする（Xcodeビルドは自動でGradleを呼ばない）
-- クローン直後はXCFrameworkが存在せずXcodeのパッケージ解決に失敗するため、必ず先に上記タスクを実行する
+- iosAppスキームのBuild Pre-actionが`./gradlew :shared:embedAndSignAppleFrameworkForXcode`を実行して`BUILT_PRODUCTS_DIR`に`Shared.framework`を供給し、ローカルパッケージ`SharedKit`のSwiftコードが`import Shared`する。**sharedのKotlinを変更しても手動手順は不要**（ビルドのたびに自動で再ビルドされる）
+- 共有スキームと**同名のユーザースキーム**（`xcuserdata`内）があるとそちらが優先され、Pre-actionが実行されずビルドが失敗する。`import Shared`の解決エラーが出たらまずこれを疑う
+- XcodeからGradleを起動するため、Xcode（GUI）から見える環境にJDKが必要（ターミナルの`xcodebuild`ならシェルの`JAVA_HOME`が使われる）
 - コマンドラインでビルドする場合:
 
 ```bash
