@@ -48,10 +48,10 @@ jobs:
             tasks: ":webApp:jsBrowserDevelopmentWebpack :webApp:wasmJsBrowserDevelopmentWebpack"
           # シミュレータ上でのDAOテスト実行と、デバイス向けframeworkのコンパイル確認
           # （シミュレータ向けは後続のxcodebuildのPre-actionでembedAndSignが担う）。
-          # Kotlin/Nativeのビルドが重いためタイムアウトを長めに取る
+          # Kotlin/Nativeのビルドが重いためタイムアウトを長めに取る。
           - name: iOS
             key: ios
-            runner: macos-15
+            runner: macos-26
             timeout: 60
             tasks: ":shared:iosSimulatorArm64Test :shared:linkDebugFrameworkIosArm64"
     steps:
@@ -85,18 +85,6 @@ jobs:
         with:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-
-      # Compose Multiplatform 1.11のui-uikitはiOS 26 SDKのAPI（UIUtilities framework /
-      # UIViewLayoutRegion）を参照するため、ランナーのデフォルトXcode 16.4ではシミュレータ
-      # テストバイナリのリンクが `Undefined symbols: _OBJC_CLASS_$_UIViewLayoutRegion` で失敗する。
-      # イメージに同梱されている最新のXcode 26系へ切り替える
-      - name: Select Xcode 26
-        if: matrix.key == 'ios'
-        run: |
-          XCODE_APP=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)
-          echo "Selected: $XCODE_APP"
-          sudo xcode-select -s "$XCODE_APP"
-          xcodebuild -version
 
       - name: Build & test
         run: ./gradlew ${{ matrix.tasks }}
