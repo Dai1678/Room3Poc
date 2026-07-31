@@ -100,7 +100,7 @@ jobs:
           if [ "${{ inputs.dryRun }}" = "true" ]; then
             export RENOVATE_DRY_RUN=full
           fi
-          npx --yes renovate@43.252.1
+          npx --yes renovate@43.288.0
         env:
           RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
           # PR・コミットをApp bot名義（<app-slug>[bot]）にする
