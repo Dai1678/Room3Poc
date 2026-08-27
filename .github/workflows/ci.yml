@@ -59,7 +59,7 @@ jobs:
 
       # Gradleクライアント起動用のJVM。ビルド本体のdaemon JVMは
       # gradle-daemon-jvm.properties（Corretto 21）がfoojay経由で自動プロビジョニングする
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: corretto
           java-version: 21
