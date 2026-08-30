@@ -16,7 +16,7 @@ kotlin-wrappers = "2026.8.3"
 kotlinx-coroutines = "1.11.0"
 ksp = "2.3.10"
 material3 = "1.11.0-alpha07"
-room = "3.0.1"
+room = "3.0.2"
 sqlite = "2.7.0"
 
 [libraries]
