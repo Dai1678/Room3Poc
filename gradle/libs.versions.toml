@@ -17,7 +17,7 @@ kotlinx-coroutines = "1.11.0"
 ksp = "2.3.10"
 material3 = "1.11.0-alpha07"
 room = "3.0.3"
-sqlite = "2.7.0"
+sqlite = "2.7.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
