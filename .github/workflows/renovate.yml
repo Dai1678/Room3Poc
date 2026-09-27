@@ -55,7 +55,7 @@ jobs:
       # postUpgradeTasksの./gradlew実行用（ci.ymlと同じ構成）。
       # ビルド本体のdaemon JVMはgradle-daemon-jvm.properties（Corretto 21）が
       # foojay経由で自動プロビジョニングする
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: corretto
           java-version: 21
